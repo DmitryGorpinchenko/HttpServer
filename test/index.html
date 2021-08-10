@@ -1,0 +1,94 @@
+<!-- This is a first example of using a template -->
+
+<head>
+
+	<!-- include our libraries and css files -->
+
+	<script src="js/jquery-2.1.4.min.js"></script>
+	<script src="js/handlebars-v3.0.3.js"></script>
+
+	<script src="js/bootstrap.min.js"></script>
+	<script src="AnimalsData.js"></script>
+	<script src="assignment.js"></script>
+
+	<link href="css/bootstrap.css" rel="stylesheet">
+	<link href="assignment.css" rel="stylesheet">
+
+</head>
+
+<body>
+	<div class="page-header">
+		<div class="container-fluid">  
+			<h1 class="title">Categories of Animals</h1>
+		</div>
+	</div>  
+
+	<div id="content" class="container-fluid" role="main">
+	</div>
+
+
+    <!-- put your HTML here -->
+
+	<script id="animal-template" type="text/x-handlebars-template">  
+		<ol class="breadcrumb">
+	        <li><a href="#" class="home">Home</a></li>
+	        <li>{{name}}</li>
+	    </ol>
+	    <div class="row">
+    		<div class="col-md-12">
+    			<h1 class="species_name">{{name}}</h1>
+    		</div>
+    	</div>
+    	<div class="row">
+    		<div class="col-xs-12 col-md-6">
+    			<img class="species_image" src="{{image1}}" alt="image of species"/>
+    		</div>
+    		<div class="col-xs-12 col-md-6">
+    			<img class="species_image" src="{{image2}}" alt="image of species"/>
+    		</div>
+    	</div>
+    	<br/><br/>
+    	<div class="row">
+    		<div class="col-md-12">
+    			<span class="description">{{description}}</span>
+    		</div>
+    	</div>
+    	<br/><br/>
+	</script>  
+
+    <script id="categories-template" type="text/x-handlebars-template">
+	    <ol class="breadcrumb">
+	        <li class="active">Home</li>
+	    </ol>
+  		<div class="row categories">
+    		<div class="col-md-12">
+		      	<div id="carousel-example-generic" class="carousel slide" data-ride="carousel">
+		        	<div class="carousel-inner" role="listbox">
+						{{#each category}}
+							<div class="item {{#if @first}}active{{/if}}" data-id="{{@index}}">
+								<br/><br/>
+								<h3 class="category_name">{{name}}</h3>
+								<br/><br/><br/><br/>
+								<h4 class="species">Click to learn more about &nbsp;
+									{{#each animals}}
+										<a class="animal_name" href="#" data-id="{{@index}}">{{name}}</a>
+										&nbsp;
+									{{/each}}
+								</h4>
+								<br/><br/>
+							</div>
+						{{/each}}
+			        </div>
+			        <a class="left carousel-control" href="#carousel-example-generic" role="button" data-slide="prev">
+			        	<span class="glyphicon glyphicon-chevron-left" aria-hidden="true"></span>
+			        	<span class="sr-only">Previous</span>
+			        </a>
+			        <a class="right carousel-control" href="#carousel-example-generic" role="button" data-slide="next">
+			        	<span class="glyphicon glyphicon-chevron-right" aria-hidden="true"></span>
+			        	<span class="sr-only">Next</span>
+			        </a>
+	    		</div> 
+	  		</div>
+		</div>
+	</script>
+</body>
