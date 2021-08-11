@@ -40,6 +40,8 @@ public:
 
     int ReadChar();
     std::string ReadLine();
+
+    bool Eof() const;
 private:
     struct Impl;
     std::unique_ptr<Impl> pimpl;

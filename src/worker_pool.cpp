@@ -5,16 +5,16 @@
 
 namespace Concurrent {
 
-struct WorkerPool::Worker
+struct WorkerPool::Worker : IWorker
 {
-    MessageQueue<std::unique_ptr<Task>> task_queue;
+    MessageQueue<std::unique_ptr<ITask>> task_queue;
     std::thread thr;
 
     void Start();
     void Quit();
     void Wait();
 
-    bool AssignTask(std::unique_ptr<Task> &&task);
+    bool AssignTask(std::unique_ptr<ITask> &&task) override;
 
     void Run();
 };
@@ -38,7 +38,7 @@ void WorkerPool::Worker::Wait()
     }
 }
 
-bool WorkerPool::Worker::AssignTask(std::unique_ptr<Task> &&task)
+bool WorkerPool::Worker::AssignTask(std::unique_ptr<ITask> &&task)
 {
     return task_queue.Send(std::move(task));
 }
@@ -49,7 +49,7 @@ void WorkerPool::Worker::Run()
         try {
             auto task = task_queue.Receive();
             task->Perform();
-        } catch (MessageQueue<std::unique_ptr<Task>>::ReceivingStopped &) {
+        } catch (MessageQueue<std::unique_ptr<ITask>>::ReceivingStopped &) {
             break;
         }
     }
@@ -99,10 +99,12 @@ RoundRobinWorkerPool::RoundRobinWorkerPool(unsigned pool_size)
 {
 }
 
-void RoundRobinWorkerPool::SubmitTask(std::unique_ptr<Task> &&task)
+IWorker *RoundRobinWorkerPool::SubmitTask(std::unique_ptr<ITask> &&task)
 {
-    workers[next_worker]->AssignTask(std::move(task));
+    auto w = workers[next_worker].get();
+    w->AssignTask(std::move(task));
     next_worker = (next_worker + 1) % workers.size();
+    return w;
 }
 
 }

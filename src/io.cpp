@@ -1,6 +1,7 @@
 #include "io.h"
 
 #include <atomic>
+#include <string>
 
 #include <unistd.h>
 #include <sys/types.h>
@@ -19,8 +20,6 @@ Socket::CtlBlock::CtlBlock()
     : ref_cnt(1)
 {
 }
-
-//
 
 Socket::Socket()
     : fd(-1)
@@ -104,18 +103,22 @@ struct BufReader::Impl
     char buf[1024];
     int cur;
     int remaining;
+    bool eof;
 	
     Impl(Socket _s);
 };
 
 BufReader::Impl::Impl(Socket _s)
     : s(std::move(_s))
-    , cur(0)
+    , cur(-1)
     , remaining(0)
+    , eof(false)
 {
 }
 
 //
+
+static const auto c_invalid_char = std::char_traits<char>::eof();
 
 BufReader::BufReader(Socket s)
     : pimpl(new Impl(std::move(s)))
@@ -126,11 +129,19 @@ BufReader::~BufReader() = default;
 
 int BufReader::ReadChar()
 {
+    if (pimpl->eof) {
+        return c_invalid_char;
+    }
     if (pimpl->remaining == 0) {
-        if ((pimpl->remaining = read(pimpl->s, pimpl->buf, sizeof(pimpl->buf))) > 0) {
+        const auto n = read(pimpl->s, pimpl->buf, sizeof(pimpl->buf));
+        if (n > 0) {
+            pimpl->remaining = n;
             pimpl->cur = 0;
         } else {
-            return -1;
+            if (n == 0) {
+                pimpl->eof = true;
+            }
+            return c_invalid_char;
         }
     }
     return pimpl->buf[--pimpl->remaining, pimpl->cur++];
@@ -140,8 +151,8 @@ std::string BufReader::ReadLine()
 {
     std::string line;
     do {
-        int c;
-        if ((c = ReadChar()) < 0) {
+        const int c = ReadChar();
+        if (c == c_invalid_char) {
             break;
         }
         line += c;
@@ -150,6 +161,11 @@ std::string BufReader::ReadLine()
         }
     } while (true);
     return line;
+}
+
+bool BufReader::Eof() const
+{
+    return pimpl->eof;
 }
 
 }
