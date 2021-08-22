@@ -2,10 +2,10 @@
 
 #include <atomic>
 #include <string>
+#include <mutex>
+#include <fstream>
 
 #include <unistd.h>
-#include <sys/types.h>
-#include <sys/socket.h>
 
 namespace IO {
 
@@ -31,11 +31,16 @@ Socket::Socket(int _fd)
     : fd(_fd)
     , ctl((_fd >= 0) ? new CtlBlock : nullptr)
 {
+    if (fd >= 0) {
+        Logger::Instance().Log("  Socket " + std::to_string(fd) + ": Opened");
+    }
 }
 
 Socket::~Socket()
 {
     if ((fd >= 0) && (--ctl->ref_cnt == 0)) {
+        Logger::Instance().Log("  Socket " + std::to_string(fd) + ": Closed");
+
         close(fd);
         fd = -1;
 
@@ -166,6 +171,38 @@ std::string BufReader::ReadLine()
 bool BufReader::Eof() const
 {
     return pimpl->eof;
+}
+
+//
+
+struct Logger::Impl
+{
+    std::mutex m;
+    std::ofstream fs;
+
+    Impl(const std::string &path);
+};
+
+Logger::Impl::Impl(const std::string &path)
+    : fs(path)
+{
+}
+
+Logger &Logger::Instance()
+{
+    static Logger log;
+    return log;
+}
+
+void Logger::Reset(const std::string &path)
+{
+    pimpl.reset(new Impl(path));
+}
+
+void Logger::Log(const std::string &msg)
+{
+    std::lock_guard<std::mutex> lock(pimpl->m);
+    pimpl->fs << msg << std::endl;
 }
 
 }

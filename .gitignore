@@ -1,3 +1,4 @@
 http_server
+log.txt
 *.o
 build/*

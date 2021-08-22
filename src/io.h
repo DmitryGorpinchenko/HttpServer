@@ -47,6 +47,20 @@ private:
     std::unique_ptr<Impl> pimpl;
 };
 
+class Logger
+{
+public:
+    static Logger &Instance();
+    void Reset(const std::string &path);
+
+    void Log(const std::string &msg);
+private:
+    Logger() = default;
+
+    struct Impl;
+    std::unique_ptr<Impl> pimpl;
+};
+
 }
 
 #endif

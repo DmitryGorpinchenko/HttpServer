@@ -7,6 +7,7 @@
 #include <fstream>
 #include <sstream>
 #include <cstring>
+#include <cstdint>
 #include <algorithm>
 #include <chrono>
 
@@ -79,12 +80,20 @@ struct Poller
 
 struct Request : Concurrent::ITask
 {
+    static int64_t count;
+
+    int64_t id;
     IO::Socket s;
     std::string dir;
     std::string request_line;
     bool bad;
 
-    Request(IO::BufReader &_reader, IO::Socket _s, const std::string &_dir);
+    static std::unique_ptr<Request> Read(IO::BufReader &reader, IO::Socket s, const std::string &dir);
+
+    Request(IO::Socket _s, const std::string &_dir, const std::string &_request_line, bool _bad);
+
+    Request(const Request &) = delete;
+    Request &operator =(const Request &) = delete;
 
     void Perform() override;
 };
@@ -230,30 +239,45 @@ int Poller::TimeoutMs() const
 
 //
 
-Request::Request(IO::BufReader &_reader, IO::Socket _s, const std::string &_dir)
-    : s(std::move(_s))
-    , dir(_dir)
-    , request_line(_reader.ReadLine())
-    , bad(false)
+int64_t Request::count = 0;
+
+std::unique_ptr<Request> Request::Read(IO::BufReader &reader, IO::Socket s, const std::string &dir)
 {
+    const auto request_line = reader.ReadLine();
     if (request_line.empty()) {
-        return;
+        return nullptr;
     }
+
+    bool bad = false;
     do { // ignore request headers
-        const auto line = _reader.ReadLine();
+        const auto line = reader.ReadLine();
         if (line == "\r\n") {
-            return;
+            break;
         }
         if (line.empty()) {
             bad = true;
-            return;
+            break;
         }
     } while (true);
+
+    std::unique_ptr<Request> res(new Request(std::move(s), dir, request_line, bad));
+    IO::Logger::Instance().Log(" Request " + std::to_string(int(res->s)) + ":" + std::to_string(res->id) + ": " + (request_line.substr(0, request_line.size() - ((request_line.back() == '\n') ? 1 : 0))));
+    return res;
+}
+
+Request::Request(IO::Socket _s, const std::string &_dir, const std::string &_request_line, bool _bad)
+    : id(++count)
+    , s(std::move(_s))
+    , dir(_dir)
+    , request_line(_request_line)
+    , bad(_bad)
+{
 }
 
 void Request::Perform()
 {
     if (bad) {
+        IO::Logger::Instance().Log("Response " + std::to_string(int(s)) + ":" + std::to_string(id) + ": HTTP/1.1 400 Bad Request");
         Response::Send(s, "400 Bad Request", "text/plain", strlen("Bad Request"), "Bad Request");
         return;
     }
@@ -261,6 +285,7 @@ void Request::Perform()
     std::string method, uri, version;
     std::istringstream(request_line) >> method  >> uri >> version;
     if ((method != "GET") && (method != "HEAD")) {
+        IO::Logger::Instance().Log("Response " + std::to_string(int(s)) + ":" + std::to_string(id) + ": HTTP/1.1 501 Not Implemented");
         Response::Send(s, "501 Not Implemented", "text/plain", strlen("Not Implemented"), "Not Implemented");
         return;
     }
@@ -270,6 +295,7 @@ void Request::Perform()
 
     std::ifstream in(fname, meta_data.is_binary ? std::ios_base::binary : std::ios_base::in);
     if (!in) {
+        IO::Logger::Instance().Log("Response " + std::to_string(int(s)) + ":" + std::to_string(id) + ": HTTP/1.1 404 Not Found");
         Response::Send(s, "404 Not Found", "text/plain", strlen("Not Found"), "Not Found");
         return;
     }
@@ -277,6 +303,7 @@ void Request::Perform()
     std::stringstream buffer;
     buffer << in.rdbuf();
     const auto str = buffer.str();
+    IO::Logger::Instance().Log("Response " + std::to_string(int(s)) + ":" + std::to_string(id) + ": HTTP/1.1 200 OK");
     Response::Send(s, "200 OK", meta_data.mime_type, str.size(), (method == "HEAD") ? std::string() : str);
 }
 
@@ -416,10 +443,9 @@ void Server::Impl::ProcessConnection(Poller::ConnHdl c)
     }
     c->last_active = poller.timestamp;
     do {
-        std::unique_ptr<Concurrent::ITask> task(new Request(*c->r, c->s, dir));
-        const bool empty = static_cast<Request *>(task.get())->request_line.empty();
+        std::unique_ptr<Concurrent::ITask> task(Request::Read(*c->r, c->s, dir));
         const bool eof = c->r->Eof(); // 'true' means socket closed from the client side
-        if (!empty) {
+        if (task) {
             if (!c->w) { // each connection must have associated worker to properly serialize responses (to pipelined requests)
                 c->w = worker_pool->SubmitTask(std::move(task));
             } else {

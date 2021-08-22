@@ -50,11 +50,12 @@ make
 ### Running
 Executable called `http_server` will be placed inside `build` directory. From within `build` directory, run project as follows:
 ```
-./http_server -h ip -p port -d dir
+./http_server -h ip -p port -d dir -l log
 ```
 * `ip` - placeholder for IP address server will bound to
 * `port` - placeholder for TCP port server will listen on
 * `dir` - placeholder for directory containing web application files (i.e., *.html, *.css and *.js files among others) which need to be served
+* `log` - placeholder for log file name
 
 After this command is executed, server will be running as a background process (i.e., will become a daemon).
 
@@ -65,7 +66,7 @@ If it isn't, then either try to run the server in a minute or try to use differe
 ### Testing
 In order to locally run test web site included with the project, from within `build` directory, execute the following command:
 ```
-./http_server -h 127.0.0.1 -p 12345 -d /home/workspace/HttpServer/test/
+./http_server -h 127.0.0.1 -p 12345 -d /home/workspace/HttpServer/test/ -l /home/workspace/HttpServer/log.txt
 ```
 **Note:** `-d` command line argument must be equal to the absolute path to the `test` folder inside project's root directory.
       So, it may differ from `/home/workspace/HttpServer/test/` depending on username and directory project has been built and executed from.
