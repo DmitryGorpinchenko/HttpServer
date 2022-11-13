@@ -56,6 +56,8 @@ public:
     void Log(const std::string &msg);
 private:
     Logger() = default;
+    Logger(const Logger &) = delete;
+    Logger &operator =(const Logger &) = delete;
 
     struct Impl;
     std::unique_ptr<Impl> pimpl;

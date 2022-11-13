@@ -14,6 +14,8 @@ struct Opts
     void Reset(int argc, char **argv);
 private:
     Opts() = default;
+    Opts(const Opts &) = delete;
+    Opts &operator =(const Opts &) = delete;
 };
 
 Opts &Opts::Instance()
